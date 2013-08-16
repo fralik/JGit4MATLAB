@@ -188,25 +188,49 @@ classdef JGit < handle
                         throw(ME)
                     end
                 else
+                    %% if "javaclasspath.txt" contains information about other JGit installations, check them and delete invalid
+                    try
+                        fid = fopen(javapath, 'rt');
+                        javapathCopy = tempname;
+                        fout = fopen(javapathCopy, 'wt');
+
+                        while ~feof(fid)
+                            pathline = fgetl(fid);
+                            if ~isempty(strfind(lower(pathline), 'jgit package'))
+                                jarPath = fgetl(fid);
+                                if exist('jarPath', 'file') ~= 0
+                                    % jar really exists, write it into output
+                                    fprintf(fout, '%s\n%s\n', pathline, jarPath);
+                                end
+                            else
+                                fprintf(fout, '%s\n', pathline);
+                            end
+                        end
+                        fclose(fid);
+                        fclose(fout);
+                        movefile(javapathCopy, javapath, 'f');
+                    catch ME
+                        fclose(fid);
+                        fclose(fout);
+                    end
+
                     %% "javaclasspath.txt" already exists
                     try
                         fid = fopen(javapath,'r+t');
                         pathline = fgetl(fid);
                         foundJGit = strcmp(pathline,jgitjar);
                         foundPM = strcmp(pathline,pmjar);
-                        while ~foundJGit || ~foundPM
+                        while ~foundJGit && ~foundPM
                             if feof(fid)
                                 copyfile(javapath,[javapath,'.JGitSaved'])
                                 if ~foundJGit
                                     fprintf(2,'JGit not on static Java class path. Writing ...\n');
                                     fprintf(fid,'# JGit package\n%s\n',jgitjar);
-                                    fclose(fid);
                                     fprintf(2,'... Done.\n\n');
                                 end
                                 if ~foundPM
                                     fprintf(2,'ProgressMonitor not on static Java class path. Writing ...\n');
                                     fprintf(fid,'# JGit package\n%s\n',pmjar);
-                                    fclose(fid);
                                     fprintf(2,'... Done.\n\n');
                                 end
                                 break
@@ -215,6 +239,7 @@ classdef JGit < handle
                             foundJGit = foundJGit || strcmp(pathline,jgitjar);
                             foundPM = foundPM || strcmp(pathline,pmjar);
                         end
+                        fclose(fid);
                         valid = foundJGit && foundPM;
                     catch ME
                         fclose(fid);

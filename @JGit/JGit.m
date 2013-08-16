@@ -248,6 +248,14 @@ classdef JGit < handle
                     end
                 end
             end
+            if ~valid
+                %% check MATLAB dynamic Java class path
+                dpath = javaclasspath('-dynamic');
+                if any(strcmp(dpath,jgitjar)) && any(strcmp(dpath,pmjar))
+                    valid = true;
+                end
+            end
+            
             %% restart message
             assert(valid,'jgit:noJGit', ...
                 ['\n\t**Please restart MATLAB.**\n\n', ...
